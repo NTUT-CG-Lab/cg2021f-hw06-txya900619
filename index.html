@@ -23,6 +23,11 @@
       <p id="modelNum">iter #0</p>
     </div>
 
+    <select style="position: absolute; top: 90%; left: 50%" id="model">
+      <option value="dolphin">dolphin</option>
+      <option value="cow">cow</option>
+    </select>
+
     <script src="scoreoutputer.min.js"></script>
     <script>
       // 建構子 ScoreOutputer 接受一個字串，該字串為 csv 的檔案名稱
@@ -87,6 +92,8 @@
 
       let camera, cameraTarget, scene, renderer;
 
+      let folderName = "dolphin";
+
       // The iterations of pytorch3d models
       const models = [
         0, 5, 10, 20, 30, 40, 50, 60, 80, 100, 130, 160, 190, 220, 250, 300,
@@ -96,8 +103,42 @@
       init();
       animate();
 
+      const gui = new GUI();
+      const effectController = { step: 1 };
+      let currentIter = effectController.step;
+
+      const modelSelector = document.getElementById("model");
+      modelSelector.onchange = (e) => {
+        folderName = e.target.value;
+        init();
+        effectController.step = 1;
+      };
+
+      function iterChanger() {
+        if (currentIter == effectController.step) {
+          return;
+        }
+
+        currentIter = effectController.step;
+        var textTag = document.getElementById("modelNum");
+        textTag.innerText = `iter #${models[currentIter - 1]}`;
+        for (let model of models) {
+          let item = scene.getObjectByName(model);
+          if (model === models[currentIter - 1]) {
+            item.visible = true;
+          } else {
+            item.visible = false;
+          }
+        }
+      }
+      gui
+        .add(effectController, "step", 1, models.length, 1)
+        .onChange(iterChanger);
+
       function init() {
-        container = document.createElement("div");
+        document.getElementById("main")?.remove();
+        const container = document.createElement("div");
+        container.id = "main";
         document.body.appendChild(container);
 
         // Camera
@@ -132,7 +173,7 @@
         const loader = new PLYLoader();
 
         // Load original model according to model_id
-        loader.load("./models/dolphin.ply", function (geometry) {
+        loader.load(`./models/${folderName}.ply`, function (geometry) {
           const material = new THREE.MeshPhongMaterial({
             color: 0xff5555,
             specular: 0x111111,
@@ -161,7 +202,7 @@
         // Load models of pytorch3d
         models.forEach((element) =>
           loader.load(
-            `./models/dolphin/model_${element}.ply`,
+            `./models/${folderName}/model_${element}.ply`,
             function (geometry) {
               geometry.computeVertexNormals();
 
@@ -202,31 +243,6 @@
         //
 
         window.addEventListener("resize", onWindowResize);
-
-        const gui = new GUI();
-        const effectController = { step: 1 };
-        let currentIter = effectController.step;
-
-        function iterChanger() {
-          if (currentIter == effectController.step) {
-            return;
-          }
-
-          currentIter = effectController.step;
-          var textTag = document.getElementById("modelNum");
-          textTag.innerText = `iter #${models[currentIter - 1]}`;
-          for (let model of models) {
-            let item = scene.getObjectByName(model);
-            if (model === models[currentIter - 1]) {
-              item.visible = true;
-            } else {
-              item.visible = false;
-            }
-          }
-        }
-        gui
-          .add(effectController, "step", 1, models.length, 1)
-          .onChange(iterChanger);
       }
 
       function addShadowedLight(x, y, z, color, intensity) {
